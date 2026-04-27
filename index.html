@@ -13,10 +13,8 @@
   <h1>Registro de Alumnos</h1>
 
  
-  <input type="text" id="nombre" placeholder="Nombre">
-  <input type="text" id="apellido" placeholder="Apellido">
-
-  <button onclick="agregarAlumno()">Buscar Alumno</button>
+<input type="text" id="buscar" placeholder="Buscar alumno...">
+<button onclick="buscarAlumno()">Buscar</button>
 
   <br><br>
 
@@ -25,19 +23,24 @@
 
   <button onclick="sumarFalta()">Registrar Asistencias</button>
 
+   <br><br>
+  <input type="text" id="nota" placeholder="Nota">
+  <button onclick="agregarNota()">Agregar Nota</button>
+
   <h2>Lista de Alumnos</h2>
 
   <table id="tabla" border="1">
     <tr>
       <th>Nombre</th>
       <th>Apellido</th>
-      <th>Inasistencias</th>
-      <th>Estado</th>
+      <th>Materia</th>
+      <th>Registro de Asistencias</th>
+      <th>Nota</th>
     </tr>
   </table>
 
   
-  <script src=""></script>
+  <script src="script.js"></script>
 
 </body>
 </html>
