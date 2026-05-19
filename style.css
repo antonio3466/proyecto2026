@@ -1,9 +1,33 @@
-body {
-  font-family: Arial, sans-serif;
+body{
+    font-family: Arial;
+    text-align: center;
+    margin-top: 50px;
 }
 
-table {
-  border-collapse: collapse;
-  width: 100%;
+.login-box{
+    width: 300px;
+    margin: auto;
+    padding: 20px;
+    border: 1px solid gray;
+    border-radius: 10px;
 }
 
+input{
+    padding: 10px;
+    margin: 5px;
+}
+
+button{
+    padding: 10px 20px;
+    cursor: pointer;
+}
+
+table{
+    margin: auto;
+    margin-top: 20px;
+    border-collapse: collapse;
+}
+
+th, td{
+    padding: 10px;
+}

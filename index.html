@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
   <meta charset="UTF-8">
   <title>Registro de Alumnos</title>
 
-  
   <link rel="stylesheet" href="style.css">
 </head>
 
@@ -12,24 +12,48 @@
 
   <h1>Registro de Alumnos</h1>
 
- 
-<input type="text" id="buscar" placeholder="Buscar alumno...">
-<button onclick="buscarAlumno()">Buscar</button>
+  
+  <button onclick="logout()">Cerrar Sesión</button>
 
   <br><br>
 
-  <input type="text" id="asistencia" placeholder="Asistencia">
-  <input type="text" id="inasistencia" placeholder="Inasistencia">
+  
+  <input type="text" id="buscar" placeholder="Buscar alumno...">
 
-  <button onclick="sumarFalta()">Registrar Asistencias</button>
+  <button onclick="buscarAlumno()">Buscar</button>
 
-   <br><br>
-  <input type="text" id="nota" placeholder="Nota">
-  <button onclick="agregarNota()">Agregar Nota</button>
+  <br><br>
+
+  
+  <div id="panelAsistencia">
+
+    <input type="text" id="asistencia" placeholder="Asistencia">
+
+    <input type="text" id="inasistencia" placeholder="Inasistencia">
+
+    <button id="btnAsistencia" onclick="sumarFalta()">
+      Registrar Asistencias
+    </button>
+
+  </div>
+
+  <br><br>
+
+  
+  <div id="panelNota">
+
+    <input type="text" id="nota" placeholder="Nota">
+
+    <button id="btnNota" onclick="agregarNota()">
+      Agregar Nota
+    </button>
+
+  </div>
 
   <h2>Lista de Alumnos</h2>
 
   <table id="tabla" border="1">
+
     <tr>
       <th>Nombre</th>
       <th>Apellido</th>
@@ -37,9 +61,9 @@
       <th>Registro de Asistencias</th>
       <th>Nota</th>
     </tr>
+
   </table>
 
-  
   <script src="script.js"></script>
 
 </body>
