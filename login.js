@@ -1,49 +1,41 @@
-const usuarios = [
+const supabaseUrl = "https://hvzkgwymqgdahcvqgoud.supabase.co";
 
-  {
-    usuario: "admin",
-    clave: "1234",
-    rol: "admin"
-  },
+const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh2emtnd3ltcWdkYWhjdnFnb3VkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyMTEyMjksImV4cCI6MjA5Njc4NzIyOX0.pwfO-RS9zvzHQZFNWKjm5fS0I7_svvgg7NHA9TntK3U";
 
-  {
-    usuario: "docente",
-    clave: "1111",
-    rol: "docente"
-  },
+const clienteSupabase = window.supabase.createClient(
+  supabaseUrl,
+  supabaseKey
+);
 
-  {
-    usuario: "preceptor",
-    clave: "2222",
-    rol: "preceptor"
-  },
+async function login() {
 
-  {
-    usuario: "alumno",
-    clave: "3333",
-    rol: "alumno"
-  }
+let usuario = document.getElementById("usuario").value;
+let clave = document.getElementById("clave").value;
 
-];
+const { data, error } = await clienteSupabase
+.from("usuario")
+.select("*")
+.eq("gmail", usuario)
+.eq("contrasena", clave);
 
-function login() {
+console.log("DATA:", data);
+console.log("ERROR:", error);
 
-  let usuario = document.getElementById("usuario").value;
-  let clave = document.getElementById("clave").value;
+if (error) {
+console.error(error);
+alert("Error de conexión");
+return;
+}
 
-  let encontrado = usuarios.find(u =>
-    u.usuario === usuario && u.clave === clave
-  );
+if (data.length > 0) {
 
-  if(encontrado){
+localStorage.setItem("rol", "admin");
 
-    localStorage.setItem("rol", encontrado.rol);
+window.location.href = "index.html";
 
-    window.location.href = "index.html";
+} else {
 
-  } else {
+alert("Usuario o contraseña incorrectos");
 
-    alert("Usuario o contraseña incorrectos");
-
-  }
+}
 }
