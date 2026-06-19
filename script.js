@@ -44,14 +44,6 @@ function logout(){
 }
 
 
-
-function buscarAlumno(){
-
-  alert("Buscar alumno");
-
-}
-
-
 function sumarFalta(){
 
   alert("Asistencia registrada");

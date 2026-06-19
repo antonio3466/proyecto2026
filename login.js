@@ -39,3 +39,8 @@ alert("Usuario o contraseña incorrectos");
 
 }
 }
+
+function togglePassword() {
+  const input = document.getElementById("clave");
+  input.type = input.type === "password" ? "text" : "password";
+}

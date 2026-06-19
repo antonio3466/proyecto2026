@@ -15,13 +15,7 @@ const alumnos = [
   }
 ];
 
-function buscarAlumno() {
-
-  let texto = document
-    .getElementById("buscar")
-    .value
-    .toLowerCase();
-
+function renderTabla(alumnosFiltrados) {
   let tabla = document.getElementById("tabla");
 
   tabla.innerHTML = `
@@ -34,13 +28,7 @@ function buscarAlumno() {
     </tr>
   `;
 
-  let encontrados = alumnos.filter(alumno =>
-    (alumno.nombre + " " + alumno.apellido)
-      .toLowerCase()
-      .includes(texto)
-  );
-
-  encontrados.forEach(alumno => {
+  alumnosFiltrados.forEach(alumno => {
     tabla.innerHTML += `
       <tr>
         <td>${alumno.nombre}</td>
@@ -51,6 +39,28 @@ function buscarAlumno() {
       </tr>
     `;
   });
-} 
+}
+
+function buscarAlumno() {
+
+  let texto = document
+    .getElementById("buscar")
+    .value
+    .toLowerCase();
+
+  let encontrados = alumnos.filter(alumno =>
+    (alumno.nombre + " " + alumno.apellido)
+      .toLowerCase()
+      .includes(texto)
+  );
+
+  renderTabla(encontrados);
+}
+
+function mostrarAlumnos() {
+  renderTabla(alumnos);
+}
+
+window.addEventListener("DOMContentLoaded", mostrarAlumnos);
  
 
