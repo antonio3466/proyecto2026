@@ -83,7 +83,7 @@ async function obtenerRegistros() {
     return { data: [], error: null };
   }
 
-  if (usuario.rol === "admin" || usuario.rol === "preceptor" || usuario.rol === "alumno") {
+  if (usuario.rol === "admin" || usuario.rol === "alumno") {
     let query = clienteSupabase.from("alumno").select(
       `id_alumno,nombre,apellido,id_curso,curso(id_preceptor),inscripcion(id_materia,materia(id_materia,nombre)),nota(id_nota,puntaje,fecha_acta,examen(id_examen,id_materia)),asistencia(id_asistencia,fecha,presente,id_materia,materia(id_materia,nombre))`
     );
@@ -92,18 +92,46 @@ async function obtenerRegistros() {
       query = query.eq("id_alumno", usuario.id_alumno);
     }
 
-    if (usuario.rol === "preceptor") {
-      query = query.eq("curso.id_preceptor", usuario.id_preceptor);
-    }
-
     const { data, error } = await query;
-
-    if (error) {
-      return { data: [], error };
-    }
+    if (error) return { data: [], error };
 
     const registros = [];
+    data.forEach(alumno => {
+      if (alumno.inscripcion && alumno.inscripcion.length) {
+        alumno.inscripcion.forEach(inscripcion => {
+          const notaReciente = obtenerNotaMasReciente(alumno.nota, alumno.id_alumno, inscripcion.id_materia);
+          const asistenciaReciente = obtenerAsistenciaMasReciente(alumno.asistencia, alumno.id_alumno, inscripcion.id_materia);
+          registros.push(construirFilaAlumno(alumno, inscripcion, notaReciente, asistenciaReciente));
+        });
+      } else {
+        registros.push(construirFilaAlumno(alumno, null, null, null));
+      }
+    });
 
+    return { data: registros, error: null };
+  }
+
+  if (usuario.rol === "preceptor") {
+    const { data: cursos, error: errorCursos } = await clienteSupabase
+      .from("curso")
+      .select("id_curso")
+      .eq("id_preceptor", usuario.id_preceptor);
+
+    if (errorCursos) return { data: [], error: errorCursos };
+
+    const cursoIds = cursos?.map(c => c.id_curso).filter(Boolean) || [];
+    if (!cursoIds.length) return { data: [], error: null };
+
+    const { data, error } = await clienteSupabase
+      .from("alumno")
+      .select(
+        `id_alumno,nombre,apellido,id_curso,inscripcion(id_materia,materia(id_materia,nombre)),nota(id_nota,puntaje,fecha_acta,examen(id_examen,id_materia)),asistencia(id_asistencia,fecha,presente,id_materia,materia(id_materia,nombre))`
+      )
+      .in("id_curso", cursoIds);
+
+    if (error) return { data: [], error };
+
+    const registros = [];
     data.forEach(alumno => {
       if (alumno.inscripcion && alumno.inscripcion.length) {
         alumno.inscripcion.forEach(inscripcion => {
@@ -125,39 +153,29 @@ async function obtenerRegistros() {
       .select("id_materia")
       .eq("id_docente", usuario.id_docente);
 
-    if (errorMaterias) {
-      return { data: [], error: errorMaterias };
-    }
+    if (errorMaterias) return { data: [], error: errorMaterias };
 
     const materiaIds = materias?.map(m => m.id_materia).filter(Boolean) || [];
-    if (!materiaIds.length) {
-      return { data: [], error: null };
-    }
+    if (!materiaIds.length) return { data: [], error: null };
 
     const { data: inscripciones, error: errorInscripciones } = await clienteSupabase.from("inscripcion").select(
       `id_alumno,id_materia,alumno(id_alumno,nombre,apellido),materia(id_materia,nombre)`
     ).in("id_materia", materiaIds);
 
-    if (errorInscripciones) {
-      return { data: [], error: errorInscripciones };
-    }
+    if (errorInscripciones) return { data: [], error: errorInscripciones };
 
     const alumnoIds = Array.from(new Set(inscripciones.map(inscripcion => inscripcion.id_alumno).filter(Boolean)));
     const { data: notas, error: errorNotas } = await clienteSupabase.from("nota").select(
       `id_nota,puntaje,id_alumno,id_examen,examen(id_examen,id_materia)`
     ).in("id_alumno", alumnoIds);
 
-    if (errorNotas) {
-      return { data: [], error: errorNotas };
-    }
+    if (errorNotas) return { data: [], error: errorNotas };
 
     const { data: asistencias, error: errorAsistencias } = await clienteSupabase.from("asistencia").select(
       `id_asistencia,fecha,presente,id_alumno,id_materia`
     ).in("id_alumno", alumnoIds).in("id_materia", materiaIds);
 
-    if (errorAsistencias) {
-      return { data: [], error: errorAsistencias };
-    }
+    if (errorAsistencias) return { data: [], error: errorAsistencias };
 
     const registros = inscripciones.map(inscripcion => {
       const idMateria = inscripcion.id_materia;
@@ -181,5 +199,3 @@ async function obtenerRegistros() {
 
   return { data: [], error: null };
 }
- 
-
