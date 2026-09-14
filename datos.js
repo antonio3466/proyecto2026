@@ -23,7 +23,7 @@ function obtenerNotaMasReciente(notas, idAlumno, idMateria) {
     const notaAlumno = nota.id_alumno === idAlumno;
     const materiaExamen = nota.examen?.id_materia === idMateria;
     return notaAlumno && materiaExamen;
-  });
+  });localStorage.getItem("id_preceptor")
 
   if (!notasFiltradas.length) return null;
 

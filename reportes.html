@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Reportes</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main>
+    <header class="top-bar">
+      <div class="heading-text">
+        <h1>Reportes</h1>
+        <p class="description">Resumen de asistencia y promedio de notas por materia.</p>
+      </div>
+      <div style="display:flex; gap:10px;">
+        <a href="index.html"><button class="secondary">Volver</button></a>
+        <button class="secondary" onclick="logout()">Cerrar Sesión</button>
+      </div>
+    </header>
+
+    <section class="card">
+      <div class="table-container">
+        <table id="tablaReportes" border="0">
+          <tr>
+            <th>Nombre</th>
+            <th>Apellido</th>
+            <th>Materia</th>
+            <th>Promedio</th>
+            <th>Asistencia</th>
+          </tr>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="datos.js"></script>
+  <script src="reportes.js"></script>
+  <script>
+    window.addEventListener("DOMContentLoaded", async () => {
+      if (!localStorage.getItem("rol")) {
+        window.location.href = "login.html";
+        return;
+      }
+      const { data, error } = await obtenerReportes();
+      const tabla = document.getElementById("tablaReportes");
+      if (error) {
+        alert("Error al cargar los reportes.");
+        return;
+      }
+      if (!data.length) {
+        tabla.innerHTML += `<tr><td colspan="5" style="text-align:center; padding:16px;">No hay datos para mostrar.</td></tr>`;
+        return;
+      }
+      data.forEach(r => {
+        tabla.innerHTML += `<tr>
+          <td>${r.nombre}</td>
+          <td>${r.apellido}</td>
+          <td>${r.materia}</td>
+          <td>${r.promedio}</td>
+          <td>${r.asistencia}</td>
+        </tr>`;
+      });
+    });
+  </script>
+</body>
+</html>
