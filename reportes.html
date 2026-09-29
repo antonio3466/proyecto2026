@@ -19,6 +19,22 @@
     </header>
 
     <section class="card">
+      <div class="form-row">
+        <input type="date" id="fechaFiltro">
+        <button class="primary" onclick="buscarAusentesPorFecha()">Ver ausentes ese día</button>
+        <button class="secondary" onclick="cargarReportesCompletos()">Volver al reporte general</button>
+      </div>
+      <div class="form-row" style="margin-top:10px;">
+        <select id="filtroAprobacion" onchange="aplicarFiltroAprobacion()">
+          <option value="todos">Todos</option>
+          <option value="aprobados">Aprobados (&ge;6)</option>
+          <option value="desaprobados">Desaprobados (&lt;6)</option>
+          <option value="sin_nota">Sin nota cargada</option>
+        </select>
+      </div>
+    </section>
+
+    <section class="card">
       <div class="table-container">
         <table id="tablaReportes" border="0">
           <tr>
@@ -37,30 +53,46 @@
   <script src="datos.js"></script>
   <script src="reportes.js"></script>
   <script>
-    window.addEventListener("DOMContentLoaded", async () => {
+    let reportesCompletos = [];
+
+    function renderTablaReportes(data, columnas, claves) {
+  const tabla = document.getElementById("tablaReportes");
+  tabla.innerHTML = `<tr>${columnas.map(c => `<th>${c}</th>`).join("")}</tr>`;
+  if (!data.length) {
+    tabla.innerHTML += `<tr><td colspan="${columnas.length}" style="text-align:center; padding:16px;">No hay datos para mostrar.</td></tr>`;
+    return;
+  }
+  data.forEach(fila => {
+    tabla.innerHTML += `<tr>${claves.map(k => `<td>${fila[k]}</td>`).join("")}</tr>`;
+  });
+}
+
+async function cargarReportesCompletos() {
+  const { data, error } = await obtenerReportes();
+  if (error) { alert("Error al cargar los reportes."); return; }
+  reportesCompletos = data;
+  renderTablaReportes(data, ["Nombre", "Apellido", "Materia", "Promedio", "Asistencia"], ["nombre", "apellido", "materia", "promedio", "asistencia"]);
+}
+
+function aplicarFiltroAprobacion() {
+  const filtro = document.getElementById("filtroAprobacion").value;
+  const filtrados = filtrarAprobacion(reportesCompletos, filtro);
+  renderTablaReportes(filtrados, ["Nombre", "Apellido", "Materia", "Promedio", "Asistencia"], ["nombre", "apellido", "materia", "promedio", "asistencia"]);
+}
+
+async function buscarAusentesPorFecha() {
+  const fecha = document.getElementById("fechaFiltro").value;
+  if (!fecha) { alert("Elegí una fecha primero."); return; }
+  const { data, error } = await obtenerAusentesPorFecha(fecha);
+  if (error) { alert("Error al buscar ausentes."); return; }
+  renderTablaReportes(data, ["Nombre", "Apellido", "Materia"], ["nombre", "apellido", "materia"]);
+}
+    window.addEventListener("DOMContentLoaded", () => {
       if (!localStorage.getItem("rol")) {
         window.location.href = "login.html";
         return;
       }
-      const { data, error } = await obtenerReportes();
-      const tabla = document.getElementById("tablaReportes");
-      if (error) {
-        alert("Error al cargar los reportes.");
-        return;
-      }
-      if (!data.length) {
-        tabla.innerHTML += `<tr><td colspan="5" style="text-align:center; padding:16px;">No hay datos para mostrar.</td></tr>`;
-        return;
-      }
-      data.forEach(r => {
-        tabla.innerHTML += `<tr>
-          <td>${r.nombre}</td>
-          <td>${r.apellido}</td>
-          <td>${r.materia}</td>
-          <td>${r.promedio}</td>
-          <td>${r.asistencia}</td>
-        </tr>`;
-      });
+      cargarReportesCompletos();
     });
   </script>
 </body>

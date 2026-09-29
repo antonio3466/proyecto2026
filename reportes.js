@@ -25,13 +25,29 @@ function construirFilaReporte(alumno, idMateria, nombreMateria, notasMateria, as
   };
 }
 
+function armarReportesDesdeAlumnos(alumnos) {
+  const reportes = [];
+  alumnos.forEach(alumno => {
+    if (!alumno.inscripcion || !alumno.inscripcion.length) {
+      reportes.push(construirFilaReporte(alumno, null, "Sin materia", [], []));
+      return;
+    }
+    alumno.inscripcion.forEach(inscripcion => {
+      const idMateria = inscripcion.id_materia;
+      const notasMateria = (alumno.nota || []).filter(n => n.examen?.id_materia === idMateria);
+      const asistenciasMateria = (alumno.asistencia || []).filter(a => a.id_materia === idMateria);
+      reportes.push(construirFilaReporte(alumno, idMateria, inscripcion.materia?.nombre || "Sin materia", notasMateria, asistenciasMateria));
+    });
+  });
+  return reportes;
+}
+
 async function obtenerReportes() {
   const usuario = obtenerUsuarioActual();
   if (!usuario.rol) return { data: [], error: null };
 
   const selectCompleto = `id_alumno,nombre,apellido,id_curso,inscripcion(id_materia,materia(id_materia,nombre)),nota(id_nota,puntaje,examen(id_examen,id_materia)),asistencia(id_asistencia,presente,id_materia)`;
 
-  // ADMIN y ALUMNO
   if (usuario.rol === "admin" || usuario.rol === "alumno") {
     let query = clienteSupabase.from("alumno").select(selectCompleto);
     if (usuario.rol === "alumno") {
@@ -44,7 +60,6 @@ async function obtenerReportes() {
     return { data: armarReportesDesdeAlumnos(data), error: null };
   }
 
-  // PRECEPTOR
   if (usuario.rol === "preceptor") {
     const { data: cursos, error: errorCursos } = await clienteSupabase
       .from("curso").select("id_curso").eq("id_preceptor", usuario.id_preceptor);
@@ -60,7 +75,6 @@ async function obtenerReportes() {
     return { data: armarReportesDesdeAlumnos(data), error: null };
   }
 
-  // DOCENTE
   if (usuario.rol === "docente") {
     const { data: materias, error: errorMaterias } = await clienteSupabase
       .from("materia").select("id_materia,nombre").eq("id_docente", usuario.id_docente);
@@ -101,19 +115,62 @@ async function obtenerReportes() {
   return { data: [], error: null };
 }
 
-function armarReportesDesdeAlumnos(alumnos) {
-  const reportes = [];
-  alumnos.forEach(alumno => {
-    if (!alumno.inscripcion || !alumno.inscripcion.length) {
-      reportes.push(construirFilaReporte(alumno, null, "Sin materia", [], []));
-      return;
-    }
-    alumno.inscripcion.forEach(inscripcion => {
-      const idMateria = inscripcion.id_materia;
-      const notasMateria = (alumno.nota || []).filter(n => n.examen?.id_materia === idMateria);
-      const asistenciasMateria = (alumno.asistencia || []).filter(a => a.id_materia === idMateria);
-      reportes.push(construirFilaReporte(alumno, idMateria, inscripcion.materia?.nombre || "Sin materia", notasMateria, asistenciasMateria));
-    });
+async function obtenerAusentesPorFecha(fecha) {
+  const usuario = obtenerUsuarioActual();
+  if (!usuario.rol) return { data: [], error: null };
+
+  let alumnoIds = null;
+
+  if (usuario.rol === "preceptor") {
+    const { data: cursos, error: errorCursos } = await clienteSupabase
+      .from("curso").select("id_curso").eq("id_preceptor", usuario.id_preceptor);
+    if (errorCursos) return { data: [], error: errorCursos };
+    const cursoIds = cursos?.map(c => c.id_curso) || [];
+    const { data: alumnos, error: errorAlumnos } = await clienteSupabase
+      .from("alumno").select("id_alumno").in("id_curso", cursoIds);
+    if (errorAlumnos) return { data: [], error: errorAlumnos };
+    alumnoIds = alumnos.map(a => a.id_alumno);
+  }
+
+  if (usuario.rol === "docente") {
+    const { data: materias } = await clienteSupabase
+      .from("materia").select("id_materia").eq("id_docente", usuario.id_docente);
+    const materiaIds = materias?.map(m => m.id_materia) || [];
+    const { data: inscripciones } = await clienteSupabase
+      .from("inscripcion").select("id_alumno").in("id_materia", materiaIds);
+    alumnoIds = Array.from(new Set((inscripciones || []).map(i => i.id_alumno)));
+  }
+
+  if (usuario.rol === "alumno") {
+    alumnoIds = [usuario.id_alumno];
+  }
+
+  let query = clienteSupabase
+    .from("asistencia")
+    .select("id_alumno,fecha,presente,id_materia,alumno(nombre,apellido),materia(nombre)")
+    .eq("fecha", fecha)
+    .eq("presente", false);
+
+  if (alumnoIds) {
+    query = query.in("id_alumno", alumnoIds);
+  }
+
+  const { data, error } = await query;
+  if (error) return { data: [], error };
+
+  const resultado = data.map(a => ({
+    nombre: a.alumno?.nombre,
+    apellido: a.alumno?.apellido,
+    materia: a.materia?.nombre || "Sin materia"
+  }));
+
+  return { data: resultado, error: null };
+}
+
+function filtrarAprobacion(reportes, filtro, notaMinima = 6) {
+  if (filtro === "todos") return reportes;
+  return reportes.filter(r => {
+    if (r.promedio === "-") return filtro === "sin_nota";
+    return filtro === "aprobados" ? r.promedio >= notaMinima : r.promedio < notaMinima;
   });
-  return reportes;
 }
