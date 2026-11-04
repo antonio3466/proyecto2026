@@ -5,6 +5,7 @@ const idPreceptor = localStorage.getItem("id_preceptor") ? Number(localStorage.g
 
 let registros = [];
 let registroSeleccionado = null;
+let notaEnEdicion = null;
 
 window.addEventListener("DOMContentLoaded", initApp);
 
@@ -30,6 +31,7 @@ function initApp() {
     panelBuscar.style.display = "none";
     panelAsistencia.style.display = "none";
     panelNota.style.display = "none";
+    document.getElementById("panelAcciones").style.display = "none";
   }
 
   cargarRegistros();
@@ -50,6 +52,11 @@ async function cargarRegistros() {
 
 function escapeTexto(texto) {
   return String(texto || "").replace(/'/g, "\\'").replace(/"/g, "&quot;");
+}
+
+function fechaLocalHoy() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 function renderTabla(registros) {
@@ -81,6 +88,11 @@ function renderTabla(registros) {
       ? `<button class="secondary" onclick="seleccionarRegistro(${registro.id_alumno}, ${registro.id_materia}, '${escapeTexto(registro.nombre)}', '${escapeTexto(registro.apellido)}', '${escapeTexto(registro.materia)}')">Seleccionar</button>`
       : "";
 
+    const puedeEditarNota = registro.id_nota !== null && registro.id_nota !== undefined && (rol === "admin" || rol === "docente");
+    const botonEditar = puedeEditarNota
+      ? `<button class="secondary" onclick="editarNota(${registro.id_alumno}, ${registro.id_materia})">Editar nota</button>`
+      : "";
+
     tabla.innerHTML += `
       <tr>
         <td>${registro.nombre}</td>
@@ -88,13 +100,15 @@ function renderTabla(registros) {
         <td>${registro.materia}</td>
         <td>${registro.asistencia}</td>
         <td>${registro.nota}</td>
-        <td>${botonSeleccion}</td>
+        <td>${botonSeleccion} ${botonEditar}</td>
       </tr>
     `;
   });
 }
 
 function seleccionarRegistro(id_alumno, id_materia, nombre, apellido, materia) {
+  if (notaEnEdicion !== null) cancelarEdicionNota();
+
   registroSeleccionado = {
     id_alumno,
     id_materia,
@@ -122,15 +136,6 @@ function buscarAlumno() {
   renderTabla(encontrados);
 }
 
-function logout() {
-  localStorage.removeItem("rol");
-  localStorage.removeItem("id_usuario");
-  localStorage.removeItem("id_alumno");
-  localStorage.removeItem("id_docente");
-  localStorage.removeItem("id_preceptor");
-  window.location.href = "login.html";
-}
-
 async function sumarFalta(presente) {
   if (!(rol === "admin" || rol === "preceptor")) {
     alert("No tienes permiso para registrar asistencias.");
@@ -142,7 +147,7 @@ async function sumarFalta(presente) {
     return;
   }
 
-  const fecha = new Date().toISOString().split("T")[0];
+  const fecha = fechaLocalHoy();
 
   const { error } = await clienteSupabase.from("asistencia").insert([
     {
@@ -155,7 +160,11 @@ async function sumarFalta(presente) {
 
   if (error) {
     console.error(error);
-    alert("Error al registrar la asistencia.");
+    if (error.code === "23505") {
+      alert("Ya hay una asistencia registrada hoy para ese alumno y materia.");
+    } else {
+      alert("Error al registrar la asistencia.");
+    }
     return;
   }
 
@@ -163,7 +172,7 @@ async function sumarFalta(presente) {
   registroSeleccionado = null;
   const info = document.getElementById("seleccionInfo");
   if (info) {
-    info.textContent = "Selecciona un alumno y una materia para registrar asistencia.";
+    info.textContent = "Selecciona un alumno y una materia.";
   }
   cargarRegistros();
 }
@@ -205,7 +214,7 @@ async function agregarNota() {
   }
 
   const examen = examenes[0];
-  const fechaActa = new Date().toISOString().split("T")[0];
+  const fechaActa = fechaLocalHoy();
 
   const { error } = await clienteSupabase.from("nota").insert([
     {
@@ -227,8 +236,89 @@ async function agregarNota() {
   registroSeleccionado = null;
   const info = document.getElementById("seleccionInfo");
   if (info) {
-    info.textContent = "Selecciona un alumno y una materia para registrar asistencia.";
+    info.textContent = "Selecciona un alumno y una materia.";
   }
   cargarRegistros();
 }
 
+function editarNota(id_alumno, id_materia) {
+  if (!(rol === "admin" || rol === "docente")) {
+    alert("No tienes permiso para editar notas.");
+    return;
+  }
+
+  const registro = registros.find(r => r.id_alumno === id_alumno && r.id_materia === id_materia);
+  if (!registro || registro.id_nota === null || registro.id_nota === undefined) {
+    alert("Ese alumno no tiene una nota para editar en esta materia.");
+    return;
+  }
+
+  registroSeleccionado = {
+    id_alumno,
+    id_materia,
+    nombre: registro.nombre,
+    apellido: registro.apellido,
+    materia: registro.materia
+  };
+  notaEnEdicion = registro.id_nota;
+
+  const info = document.getElementById("notaInfo");
+  info.textContent = `Editando nota de: ${registro.nombre} ${registro.apellido} - ${registro.materia}`;
+  info.style.display = "block";
+
+  document.getElementById("nota").value = registro.nota;
+  document.getElementById("btnNota").style.display = "none";
+  document.getElementById("btnGuardarEdicion").style.display = "";
+  document.getElementById("btnCancelarEdicion").style.display = "";
+  document.getElementById("nota").focus();
+}
+
+async function guardarEdicionNota() {
+  if (!(rol === "admin" || rol === "docente")) {
+    alert("No tienes permiso para editar notas.");
+    return;
+  }
+
+  if (notaEnEdicion === null) {
+    alert("Primero elegí una nota para editar.");
+    return;
+  }
+
+  const nuevoValor = parseFloat(document.getElementById("nota").value);
+
+  if (Number.isNaN(nuevoValor) || nuevoValor < 0 || nuevoValor > 10) {
+    alert("Ingresá una nota válida entre 0 y 10.");
+    return;
+  }
+
+  const { data, error } = await clienteSupabase
+    .from("nota")
+    .update({ puntaje: nuevoValor })
+    .eq("id_nota", notaEnEdicion)
+    .select();
+
+  if (error) {
+    console.error(error);
+    alert("Error al guardar el cambio.");
+    return;
+  }
+
+  if (!data || !data.length) {
+    alert("No se encontró la nota para modificar.");
+    return;
+  }
+
+  alert("Nota modificada correctamente.");
+  cancelarEdicionNota();
+  cargarRegistros();
+}
+
+function cancelarEdicionNota() {
+  notaEnEdicion = null;
+  registroSeleccionado = null;
+  document.getElementById("nota").value = "";
+  document.getElementById("notaInfo").style.display = "none";
+  document.getElementById("btnNota").style.display = "";
+  document.getElementById("btnGuardarEdicion").style.display = "none";
+  document.getElementById("btnCancelarEdicion").style.display = "none";
+}

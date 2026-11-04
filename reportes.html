@@ -59,8 +59,9 @@
   const tabla = document.getElementById("tablaReportes");
   tabla.innerHTML = `<tr>${columnas.map(c => `<th>${c}</th>`).join("")}</tr>`;
   if (!data.length) {
-    tabla.innerHTML += `<tr><td colspan="${columnas.length}" style="text-align:center; padding:16px;">No hay datos para mostrar.</td></tr>`;
-    return;
+  tabla.innerHTML += `<tr><td colspan="${columnas.length}" style="text-align:center; padding:16px;">${columnas.length === 3 ? "No hubo ausentes ese día." : "No hay datos para mostrar."}</td></tr>`;
+  return;
+  
   }
   data.forEach(fila => {
     tabla.innerHTML += `<tr>${claves.map(k => `<td>${fila[k]}</td>`).join("")}</tr>`;

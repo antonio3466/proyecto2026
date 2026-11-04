@@ -16,6 +16,15 @@ function obtenerUsuarioActual() {
   };
 }
 
+function logout() {
+  localStorage.removeItem("rol");
+  localStorage.removeItem("id_usuario");
+  localStorage.removeItem("id_alumno");
+  localStorage.removeItem("id_docente");
+  localStorage.removeItem("id_preceptor");
+  window.location.href = "login.html";
+}
+
 function obtenerNotaMasReciente(notas, idAlumno, idMateria) {
   if (!notas) return null;
 
@@ -23,7 +32,7 @@ function obtenerNotaMasReciente(notas, idAlumno, idMateria) {
     const notaAlumno = nota.id_alumno === idAlumno;
     const materiaExamen = nota.examen?.id_materia === idMateria;
     return notaAlumno && materiaExamen;
-  });localStorage.getItem("id_preceptor")
+  });
 
   if (!notasFiltradas.length) return null;
 
@@ -59,6 +68,7 @@ function construirFilaAlumno(alumno, inscripcion, notaReciente, asistenciaRecien
     apellido: alumno.apellido,
     id_materia: inscripcion?.id_materia || null,
     materia: inscripcion?.materia?.nombre || "Sin materia",
+    id_nota: notaReciente ? notaReciente.id_nota : null,
     nota: notaReciente ? notaReciente.puntaje : "-",
     asistencia: asistenciaReciente ? (asistenciaReciente.presente ? "Presente" : "Ausente") : "Sin registro"
   };
@@ -71,6 +81,7 @@ function construirFilaMateria(materia, inscripcion, notaReciente, asistenciaReci
     apellido: inscripcion.alumno.apellido,
     id_materia: materia.id_materia,
     materia: materia.nombre,
+    id_nota: notaReciente ? notaReciente.id_nota : null,
     nota: notaReciente ? notaReciente.puntaje : "-",
     asistencia: asistenciaReciente ? (asistenciaReciente.presente ? "Presente" : "Ausente") : "Sin registro"
   };
@@ -85,7 +96,7 @@ async function obtenerRegistros() {
 
   if (usuario.rol === "admin" || usuario.rol === "alumno") {
     let query = clienteSupabase.from("alumno").select(
-      `id_alumno,nombre,apellido,id_curso,curso(id_preceptor),inscripcion(id_materia,materia(id_materia,nombre)),nota(id_nota,puntaje,fecha_acta,examen(id_examen,id_materia)),asistencia(id_asistencia,fecha,presente,id_materia,materia(id_materia,nombre))`
+      `id_alumno,nombre,apellido,id_curso,curso(id_preceptor),inscripcion(id_materia,materia(id_materia,nombre)),nota(id_nota,puntaje,fecha_acta,examen(id_examen,id_materia,fecha)),asistencia(id_asistencia,fecha,presente,id_materia,materia(id_materia,nombre))`
     );
 
     if (usuario.rol === "alumno") {
@@ -125,7 +136,7 @@ async function obtenerRegistros() {
     const { data, error } = await clienteSupabase
       .from("alumno")
       .select(
-        `id_alumno,nombre,apellido,id_curso,inscripcion(id_materia,materia(id_materia,nombre)),nota(id_nota,puntaje,fecha_acta,examen(id_examen,id_materia)),asistencia(id_asistencia,fecha,presente,id_materia,materia(id_materia,nombre))`
+        `id_alumno,nombre,apellido,id_curso,inscripcion(id_materia,materia(id_materia,nombre)),nota(id_nota,puntaje,fecha_acta,examen(id_examen,id_materia,fecha)),asistencia(id_asistencia,fecha,presente,id_materia,materia(id_materia,nombre))`
       )
       .in("id_curso", cursoIds);
 
@@ -166,7 +177,7 @@ async function obtenerRegistros() {
 
     const alumnoIds = Array.from(new Set(inscripciones.map(inscripcion => inscripcion.id_alumno).filter(Boolean)));
     const { data: notas, error: errorNotas } = await clienteSupabase.from("nota").select(
-      `id_nota,puntaje,id_alumno,id_examen,examen(id_examen,id_materia)`
+      `id_nota,puntaje,fecha_acta,id_alumno,id_examen,examen(id_examen,id_materia,fecha)`
     ).in("id_alumno", alumnoIds);
 
     if (errorNotas) return { data: [], error: errorNotas };
@@ -189,6 +200,7 @@ async function obtenerRegistros() {
         apellido: inscripcion.alumno.apellido,
         id_materia: idMateria,
         materia: inscripcion.materia?.nombre || "Sin materia",
+        id_nota: notaReciente ? notaReciente.id_nota : null,
         nota: notaReciente ? notaReciente.puntaje : "-",
         asistencia: asistenciaReciente ? (asistenciaReciente.presente ? "Presente" : "Ausente") : "Sin registro"
       };
