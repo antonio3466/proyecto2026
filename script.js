@@ -32,6 +32,9 @@ function initApp() {
     panelAsistencia.style.display = "none";
     panelNota.style.display = "none";
     document.getElementById("panelAcciones").style.display = "none";
+    document.querySelector("h1").textContent = "Mis materias";
+    const descripcion = document.querySelector("p.description");
+    if (descripcion) descripcion.textContent = "Consulta tus faltas, tu asistencia y tus notas en cada materia.";
   }
 
   cargarRegistros();
@@ -59,7 +62,53 @@ function fechaLocalHoy() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+function renderTablaAlumno(registros) {
+  const tabla = document.getElementById("tabla");
+
+  tabla.innerHTML = `
+    <tr>
+      <th>Curso</th>
+      <th>Materia</th>
+      <th>Faltas</th>
+      <th>Asistencia</th>
+      <th>Nota</th>
+    </tr>
+  `;
+
+  if (!registros.length) {
+    tabla.innerHTML += `
+      <tr>
+        <td colspan="5" style="text-align: center; padding: 16px;">No se encontraron registros.</td>
+      </tr>
+    `;
+    return;
+  }
+
+  registros.forEach(registro => {
+    const hayClases = registro.clases > 0;
+    const faltas = hayClases ? `${registro.faltas} de ${registro.clases} clases` : "Sin registro";
+    const porcentaje = hayClases
+      ? `${Math.round(((registro.clases - registro.faltas) / registro.clases) * 100)}%`
+      : "-";
+
+    tabla.innerHTML += `
+      <tr>
+        <td>${registro.curso}</td>
+        <td>${registro.materia}</td>
+        <td>${faltas}</td>
+        <td>${porcentaje}</td>
+        <td>${registro.nota}</td>
+      </tr>
+    `;
+  });
+}
+
 function renderTabla(registros) {
+  if (rol === "alumno") {
+    renderTablaAlumno(registros);
+    return;
+  }
+
   const tabla = document.getElementById("tabla");
 
   tabla.innerHTML = `
