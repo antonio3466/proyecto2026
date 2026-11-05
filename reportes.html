@@ -1,100 +1,175 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <title>Reportes</title>
-  <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reportes</title>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <main>
-    <header class="top-bar">
-      <div class="heading-text">
-        <h1>Reportes</h1>
-        <p class="description">Resumen de asistencia y promedio de notas por materia.</p>
-      </div>
-      <div style="display:flex; gap:10px;">
-        <a href="index.html"><button class="secondary">Volver</button></a>
-        <button class="secondary" onclick="logout()">Cerrar Sesión</button>
-      </div>
-    </header>
+<main>
+<header class="top-bar">
+<div class="heading-text">
+<h1>Reportes</h1>
+<p class="description">Resumen de asistencia y promedio de notas por materia.</p>
+</div>
+<div style="display:flex; gap:10px;">
+<a href="index.html"><button class="secondary">Volver</button></a>
+<button class="secondary" onclick="logout()">Cerrar Sesión</button>
+</div>
+</header>
 
-    <section class="card">
-      <div class="form-row">
-        <input type="date" id="fechaFiltro">
-        <button class="primary" onclick="buscarAusentesPorFecha()">Ver ausentes ese día</button>
-        <button class="secondary" onclick="cargarReportesCompletos()">Volver al reporte general</button>
-      </div>
-      <div class="form-row" style="margin-top:10px;">
-        <select id="filtroAprobacion" onchange="aplicarFiltroAprobacion()">
-          <option value="todos">Todos</option>
-          <option value="aprobados">Aprobados (&ge;6)</option>
-          <option value="desaprobados">Desaprobados (&lt;6)</option>
-          <option value="sin_nota">Sin nota cargada</option>
-        </select>
-      </div>
-    </section>
+<section class="card">
+<div class="form-row">
+<input type="date" id="fechaFiltro">
+<button class="primary" onclick="buscarAusentesPorFecha()">Ver ausentes ese día</button>
+<button class="secondary" onclick="cargarReportesCompletos()">Volver al reporte general</button>
+</div>
+<div class="form-row" style="margin-top:10px;">
+<select id="filtroCurso" onchange="refrescarVista()" aria-label="Curso">
+<option value="todos">Todos los cursos</option>
+</select>
+<select id="filtroAprobacion" onchange="refrescarVista()" aria-label="Aprobación">
+<option value="todos">Todos</option>
+<option value="aprobados">Aprobados (&ge;6)</option>
+<option value="desaprobados">Desaprobados (&lt;6)</option>
+<option value="sin_nota">Sin nota cargada</option>
+</select>
+</div>
+</section>
 
-    <section class="card">
-      <div class="table-container">
-        <table id="tablaReportes" border="0">
-          <tr>
-            <th>Nombre</th>
-            <th>Apellido</th>
-            <th>Materia</th>
-            <th>Promedio</th>
-            <th>Asistencia</th>
-          </tr>
-        </table>
-      </div>
-    </section>
-  </main>
+<section class="card">
+<div class="table-container">
+<table id="tablaReportes" border="0">
+<tr>
+<th>Nombre</th>
+<th>Apellido</th>
+<th>Curso</th>
+<th>Materia</th>
+<th>Promedio</th>
+<th>Asistencia</th>
+</tr>
+</table>
+</div>
+</section>
+</main>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="datos.js"></script>
-  <script src="reportes.js"></script>
-  <script>
-    let reportesCompletos = [];
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="datos.js"></script>
+<script src="reportes.js"></script>
+<script>
+let reportesCompletos = [];
+let ausentesActuales = [];
+let vistaActual = "general";
+let etiquetasCurso = {};
 
-    function renderTablaReportes(data, columnas, claves) {
+const COLUMNAS_GENERAL = ["Nombre", "Apellido", "Curso", "Materia", "Promedio", "Asistencia"];
+const CLAVES_GENERAL = ["nombre", "apellido", "curso", "materia", "promedio", "asistencia"];
+const COLUMNAS_AUSENTES = ["Nombre", "Apellido", "Curso", "Materia"];
+const CLAVES_AUSENTES = ["nombre", "apellido", "curso", "materia"];
+
+function etiquetaCurso(c) {
+  const texto = `${c.nombre || ""}${c.division || ""}`.trim();
+  return texto || `Curso ${c.id_curso}`;
+}
+
+function etiquetaDe(idCurso) {
+  if (!idCurso) return "Sin curso";
+  return etiquetasCurso[idCurso] || `Curso ${idCurso}`;
+}
+
+async function cargarCursos(idsCurso) {
+  const ids = Array.from(new Set(idsCurso.filter(Boolean)));
+  if (!ids.length) return;
+
+  const { data, error } = await clienteSupabase
+    .from("curso")
+    .select("id_curso,nombre,division")
+    .in("id_curso", ids)
+    .order("id_curso");
+
+  if (error) {
+    console.error(error);
+    return;
+  }
+
+  const select = document.getElementById("filtroCurso");
+  const seleccionado = select.value;
+  select.innerHTML = `<option value="todos">Todos los cursos</option>` +
+    data.map(c => `<option value="${c.id_curso}">${etiquetaCurso(c)}</option>`).join("");
+  if ([...select.options].some(o => o.value === seleccionado)) {
+    select.value = seleccionado;
+  }
+
+  data.forEach(c => { etiquetasCurso[c.id_curso] = etiquetaCurso(c); });
+}
+
+function filtrarPorCurso(filas) {
+  const elegido = document.getElementById("filtroCurso").value;
+  if (elegido === "todos") return filas;
+  return filas.filter(f => String(f.id_curso) === elegido);
+}
+
+function renderTablaReportes(data, columnas, claves) {
   const tabla = document.getElementById("tablaReportes");
   tabla.innerHTML = `<tr>${columnas.map(c => `<th>${c}</th>`).join("")}</tr>`;
   if (!data.length) {
-  tabla.innerHTML += `<tr><td colspan="${columnas.length}" style="text-align:center; padding:16px;">${columnas.length === 3 ? "No hubo ausentes ese día." : "No hay datos para mostrar."}</td></tr>`;
-  return;
-  
+    const mensaje = vistaActual === "ausentes" ? "No hubo ausentes ese día." : "No hay datos para mostrar.";
+    tabla.innerHTML += `<tr><td colspan="${columnas.length}" style="text-align:center; padding:16px;">${mensaje}</td></tr>`;
+    return;
   }
   data.forEach(fila => {
     tabla.innerHTML += `<tr>${claves.map(k => `<td>${fila[k]}</td>`).join("")}</tr>`;
   });
 }
 
+function refrescarVista() {
+  if (vistaActual === "ausentes") {
+    renderTablaReportes(filtrarPorCurso(ausentesActuales), COLUMNAS_AUSENTES, CLAVES_AUSENTES);
+    return;
+  }
+  const filtro = document.getElementById("filtroAprobacion").value;
+  const filas = filtrarPorCurso(filtrarAprobacion(reportesCompletos, filtro));
+  renderTablaReportes(filas, COLUMNAS_GENERAL, CLAVES_GENERAL);
+}
+
 async function cargarReportesCompletos() {
   const { data, error } = await obtenerReportes();
   if (error) { alert("Error al cargar los reportes."); return; }
-  reportesCompletos = data;
-  renderTablaReportes(data, ["Nombre", "Apellido", "Materia", "Promedio", "Asistencia"], ["nombre", "apellido", "materia", "promedio", "asistencia"]);
-}
 
-function aplicarFiltroAprobacion() {
-  const filtro = document.getElementById("filtroAprobacion").value;
-  const filtrados = filtrarAprobacion(reportesCompletos, filtro);
-  renderTablaReportes(filtrados, ["Nombre", "Apellido", "Materia", "Promedio", "Asistencia"], ["nombre", "apellido", "materia", "promedio", "asistencia"]);
+  await cargarCursos(data.map(r => r.id_curso));
+  data.forEach(r => { r.curso = etiquetaDe(r.id_curso); });
+
+  reportesCompletos = data;
+  vistaActual = "general";
+  refrescarVista();
 }
 
 async function buscarAusentesPorFecha() {
   const fecha = document.getElementById("fechaFiltro").value;
   if (!fecha) { alert("Elegí una fecha primero."); return; }
+
   const { data, error } = await obtenerAusentesPorFecha(fecha);
   if (error) { alert("Error al buscar ausentes."); return; }
-  renderTablaReportes(data, ["Nombre", "Apellido", "Materia"], ["nombre", "apellido", "materia"]);
+
+  data.forEach(a => { a.curso = etiquetaDe(a.id_curso); });
+
+  ausentesActuales = data;
+  vistaActual = "ausentes";
+  refrescarVista();
 }
-    window.addEventListener("DOMContentLoaded", () => {
-      if (!localStorage.getItem("rol")) {
-        window.location.href = "login.html";
-        return;
-      }
-      cargarReportesCompletos();
-    });
-  </script>
+
+window.addEventListener("DOMContentLoaded", () => {
+  const rol = localStorage.getItem("rol");
+  if (!rol) {
+    window.location.href = "login.html";
+    return;
+  }
+  if (rol === "alumno") {
+    document.getElementById("filtroCurso").style.display = "none";
+  }
+  cargarReportesCompletos();
+});
+</script>
 </body>
 </html>

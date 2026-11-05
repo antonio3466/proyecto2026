@@ -66,6 +66,7 @@ function renderTabla(registros) {
     <tr>
       <th>Nombre</th>
       <th>Apellido</th>
+      <th>Curso</th>
       <th>Materia</th>
       <th>Registro de Asistencias</th>
       <th>Nota</th>
@@ -76,7 +77,7 @@ function renderTabla(registros) {
   if (!registros.length) {
     tabla.innerHTML += `
       <tr>
-        <td colspan="6" style="text-align: center; padding: 16px;">No se encontraron registros.</td>
+        <td colspan="7" style="text-align: center; padding: 16px;">No se encontraron registros.</td>
       </tr>
     `;
     return;
@@ -97,6 +98,7 @@ function renderTabla(registros) {
       <tr>
         <td>${registro.nombre}</td>
         <td>${registro.apellido}</td>
+        <td>${registro.curso}</td>
         <td>${registro.materia}</td>
         <td>${registro.asistencia}</td>
         <td>${registro.nota}</td>
@@ -130,7 +132,7 @@ function buscarAlumno() {
 
   const texto = document.getElementById("buscar").value.toLowerCase();
   const encontrados = registros.filter(registro =>
-    `${registro.nombre} ${registro.apellido}`.toLowerCase().includes(texto)
+    `${registro.nombre} ${registro.apellido} ${registro.curso}`.toLowerCase().includes(texto)
   );
 
   renderTabla(encontrados);

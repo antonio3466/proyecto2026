@@ -17,6 +17,7 @@ function construirFilaReporte(alumno, idMateria, nombreMateria, notasMateria, as
 
   return {
     id_alumno: alumno.id_alumno,
+    id_curso: alumno.id_curso ?? null,
     nombre: alumno.nombre,
     apellido: alumno.apellido,
     materia: nombreMateria,
@@ -85,7 +86,7 @@ async function obtenerReportes() {
 
     const { data: inscripciones, error: errorInscripciones } = await clienteSupabase
       .from("inscripcion")
-      .select("id_alumno,id_materia,alumno(id_alumno,nombre,apellido)")
+      .select("id_alumno,id_materia,alumno(id_alumno,nombre,apellido,id_curso)")
       .in("id_materia", materiaIds);
     if (errorInscripciones) return { data: [], error: errorInscripciones };
 
@@ -147,7 +148,7 @@ async function obtenerAusentesPorFecha(fecha) {
 
   let query = clienteSupabase
     .from("asistencia")
-    .select("id_alumno,fecha,presente,id_materia,alumno(nombre,apellido),materia(nombre)")
+    .select("id_alumno,fecha,presente,id_materia,alumno(nombre,apellido,id_curso),materia(nombre)")
     .eq("fecha", fecha)
     .eq("presente", false);
 
@@ -159,6 +160,7 @@ async function obtenerAusentesPorFecha(fecha) {
   if (error) return { data: [], error };
 
   const resultado = data.map(a => ({
+    id_curso: a.alumno?.id_curso ?? null,
     nombre: a.alumno?.nombre,
     apellido: a.alumno?.apellido,
     materia: a.materia?.nombre || "Sin materia"
